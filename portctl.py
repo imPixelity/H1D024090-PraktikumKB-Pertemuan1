@@ -3,6 +3,7 @@ import re
 import subprocess
 import signal
 import time
+import argparse
 
 
 def check_port_usage(user_port):
@@ -33,7 +34,10 @@ def check_port_usage(user_port):
 
 def terminate_socket_listener(pid):
     while True:
-        opts = input("Do you want to terminate the port? [y/N]: ").strip().lower()
+        try:
+            opts = input("Do you want to terminate the port? [y/N]: ").strip().lower()
+        except KeyboardInterrupt:
+            exit(0)
 
         if opts == "y":
             print("Sending SIGTERM...")
@@ -52,9 +56,14 @@ def terminate_socket_listener(pid):
                 time.sleep(interval)
 
             while True:
-                force = (
-                    input("Process still running. Force kill ? [y/N]: ").strip().lower()
-                )
+                try:
+                    force = (
+                        input("Process still running. Force kill ? [y/N]: ")
+                        .strip()
+                        .lower()
+                    )
+                except KeyboardInterrupt:
+                    exit(0)
 
                 if force == "y":
                     os.kill(pid, signal.SIGKILL)
@@ -72,7 +81,19 @@ def terminate_socket_listener(pid):
             print("Please enter 'y' or 'n'")
 
 
-pid = check_port_usage(5173)
-print(pid)
-if pid is not None:
-    terminate_socket_listener(int(pid))
+def main():
+    parser = argparse.ArgumentParser(
+        description="Portctl is a tool for checking and terminating port in Python."
+    )
+
+    parser.add_argument("-p", "--port", type=int, required=True, help="Port to inspect")
+    parser.add_argument("-k", "--kill", action="store_true", help="Port to terminate")
+
+    args = parser.parse_args()
+    pid = check_port_usage(args.port)
+
+    if pid is not None and args.kill:
+        terminate_socket_listener(int(pid))
+
+
+main()
