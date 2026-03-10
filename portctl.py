@@ -25,6 +25,7 @@ def scan_all_ports():
             pid_regex = re.search(r"pid=(\d+)", fields[5])
         except IndexError:
             is_pid_blocked = True
+            pid_regex = None
 
         ports.append(
             {
