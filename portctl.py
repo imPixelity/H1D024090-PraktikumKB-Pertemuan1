@@ -2,8 +2,38 @@ import os
 import re
 import subprocess
 import signal
+import sys
 import time
 import argparse
+
+
+def scan_all_ports():
+    ss_result = subprocess.run(["ss", "-lntpH"], capture_output=True, text=True)
+    socket_rows = ss_result.stdout.splitlines()
+
+    ports = []
+    pid_regex = None
+    global pid_blocked
+    is_pid_blocked = False
+
+    for row in socket_rows:
+        fields = row.split()
+
+        # regex for pid in ss
+        try:
+            pid_regex = re.search(r"pid=(\d+)", fields[5])
+        except IndexError:
+            is_pid_blocked = True
+
+        ports.append(
+            {
+                "protocol": "tcp",
+                "port": fields[3].rsplit(":", 1)[1],
+                "pid": pid_regex.group(1) if pid_regex else None,
+            }
+        )
+
+    return ports, is_pid_blocked
 
 
 def check_port_usage(user_port):
@@ -11,7 +41,7 @@ def check_port_usage(user_port):
     socket_rows = ss_result.stdout.splitlines()
 
     is_used = False
-    pid_regex = ""
+    pid_regex = None
 
     for row in socket_rows:
         fields = row.split()
@@ -20,7 +50,11 @@ def check_port_usage(user_port):
 
         if str(user_port) == local_port:
             # regex for pid in ss
-            pid_regex = re.search(r"pid=(\d+)", fields[5])
+            try:
+                pid_regex = re.search(r"pid=(\d+)", fields[5])
+            except IndexError:
+                print("This process requires root privileges. Please run with sudo")
+                sys.exit(1)
             print(f"Port {local_port} is being used")
             is_used = True
 
@@ -37,7 +71,7 @@ def terminate_socket_listener(pid):
         try:
             opts = input("Do you want to terminate the port? [y/N]: ").strip().lower()
         except KeyboardInterrupt:
-            exit(0)
+            sys.exit(0)
 
         if opts == "y":
             print("Sending SIGTERM...")
@@ -63,7 +97,7 @@ def terminate_socket_listener(pid):
                         .lower()
                     )
                 except KeyboardInterrupt:
-                    exit(0)
+                    sys.exit(0)
 
                 if force == "y":
                     os.kill(pid, signal.SIGKILL)
@@ -86,14 +120,24 @@ def main():
         description="Portctl is a tool for checking and terminating port in Python."
     )
 
-    parser.add_argument("-p", "--port", type=int, required=True, help="Port to inspect")
+    parser.add_argument("-p", "--port", type=int, help="Port to inspect")
     parser.add_argument("-k", "--kill", action="store_true", help="Port to terminate")
 
     args = parser.parse_args()
-    pid = check_port_usage(args.port)
 
-    if pid is not None and args.kill:
-        terminate_socket_listener(int(pid))
+    if args.port:
+        pid = check_port_usage(args.port)
+
+        if pid is not None and args.kill:
+            terminate_socket_listener(int(pid))
+    else:
+        ports, is_pid_blocked = scan_all_ports()
+
+        for port_info in ports:
+            print(port_info)
+
+        if is_pid_blocked:
+            print("PID: None (requires root privileges)")
 
 
 main()
