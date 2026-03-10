@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import re
 import subprocess
@@ -134,7 +135,9 @@ def main():
         ports, is_pid_blocked = scan_all_ports()
 
         for port_info in ports:
-            print(port_info)
+            print(
+                f"Protocol: {port_info['protocol']} | Port: {port_info['port']} | PID: {port_info['pid']}"
+            )
 
         if is_pid_blocked:
             print("PID: None (requires root privileges)")
