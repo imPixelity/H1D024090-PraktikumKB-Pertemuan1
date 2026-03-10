@@ -7,11 +7,11 @@ import time
 
 def check_port_usage(user_port):
     ss_result = subprocess.run(["ss", "-lntpH"], capture_output=True, text=True)
-
     socket_rows = ss_result.stdout.splitlines()
 
     is_used = False
     pid_regex = ""
+
     for row in socket_rows:
         fields = row.split()
         local_address_port = fields[3]
@@ -48,13 +48,25 @@ def terminate_socket_listener(pid):
                     os.kill(pid, 0)
                 except ProcessLookupError:
                     print("Process terminated gracefully")
-                    break
+                    return
                 time.sleep(interval)
 
-            # TODO: SIGKILL, force kill
-            break
+            while True:
+                force = (
+                    input("Process still running. Force kill ? [y/N]: ").strip().lower()
+                )
+
+                if force == "y":
+                    os.kill(pid, signal.SIGKILL)
+                    print("Process terminated")
+                    return
+                elif force == "n" or force == "":
+                    print("Process left running")
+                    return
+                else:
+                    print("Please enter 'y' or 'n'")
         elif opts == "n" or opts == "":
-            print("nossir")
+            print("Process left running")
             break
         else:
             print("Please enter 'y' or 'n'")
@@ -64,4 +76,3 @@ pid = check_port_usage(5173)
 print(pid)
 if pid is not None:
     terminate_socket_listener(int(pid))
-
