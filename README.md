@@ -2,7 +2,7 @@
 
 A simple command line tool for inspecting and terminating processes listening on TCP ports.
 
-<video src="https://github.com/user-attachments/assets/1473e9ee-6459-4eda-b0f3-7b130b6f5b66" controls></video>
+![demo](.github/portctl_demo.gif)
 
 ### Requirements
 
